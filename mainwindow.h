@@ -8,8 +8,9 @@
 #include <opencv2/opencv.hpp>
 
 QT_BEGIN_NAMESPACE
-namespace Ui {
-class MainWindow;
+namespace Ui
+{
+    class MainWindow;
 }
 QT_END_NAMESPACE
 
@@ -26,15 +27,24 @@ private slots:
     void updateCameraFeed();
 
 private:
+    enum class TrackingAlgorithm
+    {
+        KCF,
+        CSRT,
+        MIL,
+    };
+
     Ui::MainWindow *ui;
     cv::VideoCapture cap;
     QTimer *cameraTimer;
     cv::Rect selectedROI;
     cv::Mat trackedFrame;
     cv::Mat currentFrame;
-    QString trackingAlgorithm = "KCF";
+    TrackingAlgorithm trackingAlgorithm = TrackingAlgorithm::KCF;
     cv::Ptr<cv::Tracker> tracker;
 
     void displayImage(const cv::Mat &image, QFrame *frame);
+    void initializeTracker(TrackingAlgorithm algorithm);
 };
+
 #endif // MAINWINDOW_H
