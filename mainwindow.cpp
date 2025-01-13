@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include <QMessageBox>
+#include <QDateTime>
 #include <QVBoxLayout>
 #include <opencv2/tracking.hpp>
 
@@ -24,19 +25,24 @@ MainWindow::MainWindow(QWidget *parent)
     tracker = cv::TrackerKCF::create();
 
     connect(ui->radioButton_KCF, &QRadioButton::clicked, [this](bool checked)
-            {
-        if (checked) trackingAlgorithm = TrackingAlgorithm::KCF; });
+    {
+        if (checked) trackingAlgorithm = TrackingAlgorithm::KCF;
+    });
     connect(ui->radioButton_CSRT, &QRadioButton::clicked, [this](bool checked)
-            {
-        if (checked) trackingAlgorithm = TrackingAlgorithm::CSRT; });
+    {
+        if (checked) trackingAlgorithm = TrackingAlgorithm::CSRT;
+    });
     connect(ui->radioButton_MIL, &QRadioButton::clicked, [this](bool checked)
-            {
-        if (checked) trackingAlgorithm = TrackingAlgorithm::MIL; });
+    {
+        if (checked) trackingAlgorithm = TrackingAlgorithm::MIL;
+    });
 }
 
 MainWindow::~MainWindow()
 {
     cap.release();
+    tracker.release();
+    delete cameraTimer;
     delete ui;
 }
 
@@ -48,27 +54,45 @@ void MainWindow::updateCameraFeed()
         return;
     }
 
+
     if (tracker && selectedROI.width > 0 && selectedROI.height > 0)
     {
+
         try
         {
+            quint64 startTime = QDateTime::currentMSecsSinceEpoch();
             bool ok = tracker->update(currentFrame, selectedROI);
             if (ok)
             {
                 cv::rectangle(currentFrame, selectedROI, cv::Scalar(0, 255, 0), 2);
-
                 cv::Mat zoomedROI = currentFrame(selectedROI);
                 displayImage(zoomedROI, ui->frame_zoomedImage);
             }
+            quint64 endTime = QDateTime::currentMSecsSinceEpoch();
+            calculateAndDisplayPerformanceMetrics(startTime, endTime);
         }
+
         catch (cv::Exception e)
         {
             QMessageBox::warning(this, "Warning", "Tracking failed. Please reselect ROI.");
             tracker.release();
+
+            selectedROI = cv::Rect();
         }
+
     }
 
     displayImage(currentFrame, ui->frame_camera_feed);
+
+}
+
+void MainWindow::calculateAndDisplayPerformanceMetrics(quint64 startTime, quint64 endTime)
+{
+    short frameTime = endTime - startTime;
+    float fps = 1000.0 / frameTime;
+
+    ui->label_fps->setText("FPS: " + QString::number(qRound(fps)));
+    ui->label_frametime->setText("Frametime: " + QString::number(frameTime) + "ms");
 }
 
 void MainWindow::on_button_selectROI_clicked()
@@ -85,6 +109,9 @@ void MainWindow::on_button_selectROI_clicked()
 
 void MainWindow::initializeTracker(TrackingAlgorithm algorithm)
 {
+    if (tracker) {
+        tracker.release();
+    }
     switch (algorithm)
     {
     case TrackingAlgorithm::KCF:
@@ -138,4 +165,6 @@ void MainWindow::displayImage(const cv::Mat &image, QFrame *frame)
     label->setPixmap(pixmap);
     label->setAlignment(Qt::AlignCenter);
     layout->addWidget(label);
+
+    connect(cameraTimer, &QTimer::timeout, label, &QLabel::deleteLater);
 }

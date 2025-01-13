@@ -41,10 +41,11 @@ private:
     cv::Mat trackedFrame;
     cv::Mat currentFrame;
     TrackingAlgorithm trackingAlgorithm = TrackingAlgorithm::KCF;
-    cv::Ptr<cv::Tracker> tracker;
+    cv::Ptr<cv::Tracker> tracker = nullptr;
 
     void displayImage(const cv::Mat &image, QFrame *frame);
     void initializeTracker(TrackingAlgorithm algorithm);
+    void calculateAndDisplayPerformanceMetrics(quint64 startTime, quint64 endTime);
 };
 
 #endif // MAINWINDOW_H
