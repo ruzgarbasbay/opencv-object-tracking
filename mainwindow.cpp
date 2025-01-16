@@ -10,7 +10,6 @@ MainWindow::MainWindow(QWidget *parent)
     cameraTimer(new QTimer(this)) {
 
     ui->setupUi(this);
-    ui->radioButton_KCF->setChecked(true);
 
     if (!cap.isOpened()) {
         QMessageBox::critical(this, "Error", "Failed to open the camera.");
@@ -18,30 +17,22 @@ MainWindow::MainWindow(QWidget *parent)
     }
 
     connect(cameraTimer, &QTimer::timeout, this, &MainWindow::updateCameraFeed);
-    cameraTimer->start(30);
-
-    // default tracker
-    tracker = cv::TrackerKCF::create();
+    cameraTimer->start(16);
 
     connect(ui->radioButton_KCF, &QRadioButton::clicked, [this](bool checked) {
-        if (checked)
-            trackingAlgorithm = TrackingAlgorithm::KCF;
+        updateTrackingAlgorithm(TrackingAlgorithm::KCF, checked);
     });
     connect(ui->radioButton_CSRT, &QRadioButton::clicked, [this](bool checked) {
-        if (checked)
-            trackingAlgorithm = TrackingAlgorithm::CSRT;
+        updateTrackingAlgorithm(TrackingAlgorithm::CSRT, checked);
     });
     connect(ui->radioButton_MOSSE, &QRadioButton::clicked, [this](bool checked) {
-        if (checked)
-            trackingAlgorithm = TrackingAlgorithm::MOSSE;
+        updateTrackingAlgorithm(TrackingAlgorithm::MOSSE, checked);
     });
     connect(ui->radioButton_TLD, &QRadioButton::clicked, [this](bool checked) {
-        if (checked)
-            trackingAlgorithm = TrackingAlgorithm::TLD;
+        updateTrackingAlgorithm(TrackingAlgorithm::TLD, checked);
     });
     connect(ui->radioButton_MIL, &QRadioButton::clicked, [this](bool checked) {
-        if (checked)
-            trackingAlgorithm = TrackingAlgorithm::MIL;
+        updateTrackingAlgorithm(TrackingAlgorithm::MIL, checked);
     });
 }
 
@@ -52,31 +43,40 @@ MainWindow::~MainWindow() {
     delete ui;
 }
 
+void MainWindow::updateTrackingAlgorithm(TrackingAlgorithm algo, bool checked) {
+    if (checked && trackingAlgorithm != algo) {
+        trackingAlgorithm = algo;
+        initializeTracker(algo);
+    }
+}
+
 void MainWindow::updateCameraFeed() {
     cap >> currentFrame;
     if (currentFrame.empty()) {
         return;
     }
 
-    if (tracker && selectedROI.width > 0 && selectedROI.height > 0) {
+    if (tracker && !selectedROI.empty()) {
 
         try {
             quint64 startTime = QDateTime::currentMSecsSinceEpoch();
             bool ok = tracker->update(currentFrame, selectedROI);
+            quint64 endTime = QDateTime::currentMSecsSinceEpoch();
+
             if (ok) {
                 cv::rectangle(currentFrame, selectedROI, cv::Scalar(0, 255, 0), 2);
                 cv::Mat zoomedROI = currentFrame(selectedROI);
                 displayImage(zoomedROI, ui->frame_zoomedImage);
             }
-            quint64 endTime = QDateTime::currentMSecsSinceEpoch();
-            calculateAndDisplayPerformanceMetrics(startTime, endTime);
+
+            calculatePerformanceMetrics(startTime, endTime);
         }
 
         catch (cv::Exception e) {
             QMessageBox::warning(this, "Warning",
                                  "Tracking failed. Please reselect ROI.");
             tracker.release();
-
+            displayPerformanceMetrics("", "");
             selectedROI = cv::Rect();
         }
     }
@@ -84,14 +84,21 @@ void MainWindow::updateCameraFeed() {
     displayImage(currentFrame, ui->frame_camera_feed);
 }
 
-void MainWindow::calculateAndDisplayPerformanceMetrics(quint64 startTime,
-                                                       quint64 endTime) {
+void MainWindow::calculatePerformanceMetrics(quint64 startTime,
+                                             quint64 endTime) {
     short frameTime = endTime - startTime;
-    float fps = 1000.0 / frameTime;
 
-    ui->label_fps->setText("FPS: " + QString::number(qRound(fps)));
-    ui->label_frametime->setText("Frametime: " + QString::number(frameTime) +
-                                 "ms");
+    if (frameTime == 0) {
+        displayPerformanceMetrics("FPS: >1000", "Frametime: <1ms");
+    } else {
+        displayPerformanceMetrics("FPS: " + QString::number(1000.0 / frameTime, 'f', 2),
+                                  "Frametime: " + QString::number(frameTime) + "ms");
+    }
+}
+
+void MainWindow::displayPerformanceMetrics(QString fpsLabelText, QString frametimeLabelText) {
+    ui->label_fps->setText(fpsLabelText);
+    ui->label_frametime->setText(frametimeLabelText);
 }
 
 void MainWindow::on_button_selectROI_clicked() {
@@ -99,15 +106,23 @@ void MainWindow::on_button_selectROI_clicked() {
     selectedROI = cv::selectROI("Select ROI", frameToSelect);
     cv::destroyWindow("Select ROI");
 
-    if (selectedROI.width > 0 && selectedROI.height > 0) {
-        initializeTracker(trackingAlgorithm);
+    if (trackingAlgorithm == TrackingAlgorithm::DEFAULT) {
+        trackingAlgorithm = TrackingAlgorithm::KCF;
+        ui->radioButton_KCF->setChecked(true);
     }
+
+    return initializeTracker(trackingAlgorithm);
 }
 
 void MainWindow::initializeTracker(TrackingAlgorithm algorithm) {
+    if (selectedROI.empty()) {
+        return;
+    }
+
     if (tracker) {
         tracker.release();
     }
+
     switch (algorithm) {
     case TrackingAlgorithm::KCF:
         tracker = cv::TrackerKCF::create();
@@ -129,7 +144,17 @@ void MainWindow::initializeTracker(TrackingAlgorithm algorithm) {
         break;
     }
 
-    tracker->init(currentFrame, selectedROI);
+    try {
+        tracker->init(currentFrame, selectedROI);
+    }
+
+    catch (cv::Exception e) {
+        QMessageBox::warning(this, "Warning",
+                             "Tracker initialization failed. Please select ROI.");
+        tracker.release();
+        displayPerformanceMetrics("", "");
+        selectedROI = cv::Rect();
+    }
 }
 
 void MainWindow::displayImage(const cv::Mat &image, QFrame *frame) {

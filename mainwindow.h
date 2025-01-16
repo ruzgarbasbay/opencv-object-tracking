@@ -28,6 +28,7 @@ private slots:
 
 private:
     enum class TrackingAlgorithm {
+        DEFAULT,
         KCF,
         CSRT,
         MOSSE,
@@ -41,13 +42,15 @@ private:
     cv::Rect selectedROI;
     cv::Mat trackedFrame;
     cv::Mat currentFrame;
-    TrackingAlgorithm trackingAlgorithm = TrackingAlgorithm::KCF;
+    TrackingAlgorithm trackingAlgorithm = TrackingAlgorithm::DEFAULT;
     cv::Ptr<cv::Tracker> tracker = nullptr;
 
     void displayImage(const cv::Mat &image, QFrame *frame);
     void initializeTracker(TrackingAlgorithm algorithm);
-    void calculateAndDisplayPerformanceMetrics(quint64 startTime,
-                                               quint64 endTime);
+    void calculatePerformanceMetrics(quint64 startTime,
+                                     quint64 endTime);
+    void displayPerformanceMetrics(QString fpsLabelText, QString frametimeLabelText);
+    void updateTrackingAlgorithm(TrackingAlgorithm algo, bool checked);
 };
 
 #endif // MAINWINDOW_H
