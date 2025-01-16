@@ -1,19 +1,18 @@
-#include "mainwindow.h"
 #include "./ui_mainwindow.h"
-#include <QMessageBox>
+#include "mainwindow.h"
 #include <QDateTime>
+#include <QMessageBox>
 #include <QVBoxLayout>
 #include <opencv2/tracking.hpp>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow), cap(0), cameraTimer(new QTimer(this))
-{
+    : QMainWindow(parent), ui(new Ui::MainWindow), cap(0),
+    cameraTimer(new QTimer(this)) {
 
     ui->setupUi(this);
     ui->radioButton_KCF->setChecked(true);
 
-    if (!cap.isOpened())
-    {
+    if (!cap.isOpened()) {
         QMessageBox::critical(this, "Error", "Failed to open the camera.");
         return;
     }
@@ -24,46 +23,47 @@ MainWindow::MainWindow(QWidget *parent)
     // default tracker
     tracker = cv::TrackerKCF::create();
 
-    connect(ui->radioButton_KCF, &QRadioButton::clicked, [this](bool checked)
-    {
-        if (checked) trackingAlgorithm = TrackingAlgorithm::KCF;
+    connect(ui->radioButton_KCF, &QRadioButton::clicked, [this](bool checked) {
+        if (checked)
+            trackingAlgorithm = TrackingAlgorithm::KCF;
     });
-    connect(ui->radioButton_CSRT, &QRadioButton::clicked, [this](bool checked)
-    {
-        if (checked) trackingAlgorithm = TrackingAlgorithm::CSRT;
+    connect(ui->radioButton_CSRT, &QRadioButton::clicked, [this](bool checked) {
+        if (checked)
+            trackingAlgorithm = TrackingAlgorithm::CSRT;
     });
-    connect(ui->radioButton_MIL, &QRadioButton::clicked, [this](bool checked)
-    {
-        if (checked) trackingAlgorithm = TrackingAlgorithm::MIL;
+    connect(ui->radioButton_MOSSE, &QRadioButton::clicked, [this](bool checked) {
+        if (checked)
+            trackingAlgorithm = TrackingAlgorithm::MOSSE;
+    });
+    connect(ui->radioButton_TLD, &QRadioButton::clicked, [this](bool checked) {
+        if (checked)
+            trackingAlgorithm = TrackingAlgorithm::TLD;
+    });
+    connect(ui->radioButton_MIL, &QRadioButton::clicked, [this](bool checked) {
+        if (checked)
+            trackingAlgorithm = TrackingAlgorithm::MIL;
     });
 }
 
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow() {
     cap.release();
     tracker.release();
     delete cameraTimer;
     delete ui;
 }
 
-void MainWindow::updateCameraFeed()
-{
+void MainWindow::updateCameraFeed() {
     cap >> currentFrame;
-    if (currentFrame.empty())
-    {
+    if (currentFrame.empty()) {
         return;
     }
 
+    if (tracker && selectedROI.width > 0 && selectedROI.height > 0) {
 
-    if (tracker && selectedROI.width > 0 && selectedROI.height > 0)
-    {
-
-        try
-        {
+        try {
             quint64 startTime = QDateTime::currentMSecsSinceEpoch();
             bool ok = tracker->update(currentFrame, selectedROI);
-            if (ok)
-            {
+            if (ok) {
                 cv::rectangle(currentFrame, selectedROI, cv::Scalar(0, 255, 0), 2);
                 cv::Mat zoomedROI = currentFrame(selectedROI);
                 displayImage(zoomedROI, ui->frame_zoomedImage);
@@ -72,53 +72,54 @@ void MainWindow::updateCameraFeed()
             calculateAndDisplayPerformanceMetrics(startTime, endTime);
         }
 
-        catch (cv::Exception e)
-        {
-            QMessageBox::warning(this, "Warning", "Tracking failed. Please reselect ROI.");
+        catch (cv::Exception e) {
+            QMessageBox::warning(this, "Warning",
+                                 "Tracking failed. Please reselect ROI.");
             tracker.release();
 
             selectedROI = cv::Rect();
         }
-
     }
 
     displayImage(currentFrame, ui->frame_camera_feed);
-
 }
 
-void MainWindow::calculateAndDisplayPerformanceMetrics(quint64 startTime, quint64 endTime)
-{
+void MainWindow::calculateAndDisplayPerformanceMetrics(quint64 startTime,
+                                                       quint64 endTime) {
     short frameTime = endTime - startTime;
     float fps = 1000.0 / frameTime;
 
     ui->label_fps->setText("FPS: " + QString::number(qRound(fps)));
-    ui->label_frametime->setText("Frametime: " + QString::number(frameTime) + "ms");
+    ui->label_frametime->setText("Frametime: " + QString::number(frameTime) +
+                                 "ms");
 }
 
-void MainWindow::on_button_selectROI_clicked()
-{
+void MainWindow::on_button_selectROI_clicked() {
     cv::Mat frameToSelect = currentFrame.clone();
     selectedROI = cv::selectROI("Select ROI", frameToSelect);
     cv::destroyWindow("Select ROI");
 
-    if (selectedROI.width > 0 && selectedROI.height > 0)
-    {
+    if (selectedROI.width > 0 && selectedROI.height > 0) {
         initializeTracker(trackingAlgorithm);
     }
 }
 
-void MainWindow::initializeTracker(TrackingAlgorithm algorithm)
-{
+void MainWindow::initializeTracker(TrackingAlgorithm algorithm) {
     if (tracker) {
         tracker.release();
     }
-    switch (algorithm)
-    {
+    switch (algorithm) {
     case TrackingAlgorithm::KCF:
         tracker = cv::TrackerKCF::create();
         break;
     case TrackingAlgorithm::CSRT:
         tracker = cv::TrackerCSRT::create();
+        break;
+    case TrackingAlgorithm::MOSSE:
+        tracker = cv::legacy::upgradeTrackingAPI(cv::legacy::TrackerMOSSE::create());
+        break;
+    case TrackingAlgorithm::TLD:
+        tracker = cv::legacy::upgradeTrackingAPI(cv::legacy::TrackerTLD::create());
         break;
     case TrackingAlgorithm::MIL:
         tracker = cv::TrackerMIL::create();
@@ -131,31 +132,27 @@ void MainWindow::initializeTracker(TrackingAlgorithm algorithm)
     tracker->init(currentFrame, selectedROI);
 }
 
-void MainWindow::displayImage(const cv::Mat &image, QFrame *frame)
-{
+void MainWindow::displayImage(const cv::Mat &image, QFrame *frame) {
     cv::Mat rgbImage;
 
-    if (image.channels() == 3)
-    {
+    if (image.channels() == 3) {
         cv::cvtColor(image, rgbImage, cv::COLOR_BGR2RGB);
-    }
-    else
-    {
+    } else {
         rgbImage = image.clone();
     }
 
-    QImage qimg(rgbImage.data, rgbImage.cols, rgbImage.rows, rgbImage.step, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(qimg).scaled(frame->size(), Qt::KeepAspectRatio);
+    QImage qimg(rgbImage.data, rgbImage.cols, rgbImage.rows, rgbImage.step,
+                QImage::Format_RGB888);
+    QPixmap pixmap =
+        QPixmap::fromImage(qimg).scaled(frame->size(), Qt::KeepAspectRatio);
 
     QVBoxLayout *layout = qobject_cast<QVBoxLayout *>(frame->layout());
-    if (!layout)
-    {
+    if (!layout) {
         layout = new QVBoxLayout(frame);
         frame->setLayout(layout);
     }
 
-    while (!layout->isEmpty())
-    {
+    while (!layout->isEmpty()) {
         QLayoutItem *item = layout->takeAt(0);
         delete item->widget();
         delete item;
