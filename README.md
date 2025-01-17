@@ -13,17 +13,20 @@ This project is a Qt-based application that uses OpenCV to capture video from a 
 
 -   Qt 6.x
 -   OpenCV 4.x with contrib
--   CMake (for building the project)
+-   CMake >= 3.16
 
 ## Usage
 
 1. **Start the application.**
 2. **Select the tracking algorithm** by clicking on the corresponding radio button (KCF, CSRT, MIL).
-![image](https://github.com/user-attachments/assets/9eb63a90-f8ae-452b-bbbc-c1965025d467)
+![image](https://github.com/user-attachments/assets/2a24d2d6-1f93-438d-8fa7-ed2c0e8828f4)
+
 3. **Click the "Select ROI" button** to choose the region of interest in the video feed.
-![image](https://github.com/user-attachments/assets/7927e220-9057-46d3-a9b2-bfd1380c4bbd)
+![image](https://github.com/user-attachments/assets/0d4b19a4-c7bb-4da1-b273-d66fe94ffea6)
+
 4. The application will start tracking the selected ROI and display the zoomed-in view of the tracked object.
-![image](https://github.com/user-attachments/assets/d48d7684-073f-4fae-a559-784c8bdfa27b)
+![image](https://github.com/user-attachments/assets/b72327d9-f556-4f50-b89f-b106fd0744db)
+
 
 ## Acknowledgements
 
