@@ -47,9 +47,9 @@ private:
 
     void displayImage(const cv::Mat &image, QFrame *frame);
     void initializeTracker(TrackingAlgorithm algorithm);
-    void calculatePerformanceMetrics(quint64 startTime,
-                                     quint64 endTime);
-    void displayPerformanceMetrics(QString fpsLabelText, QString frametimeLabelText);
+    void calculatePerformanceMetrics(quint64 startTime, quint64 endTime);
+    void displayPerformanceMetrics(QString fpsLabelText,
+                                   QString frametimeLabelText);
     void updateTrackingAlgorithm(TrackingAlgorithm algo, bool checked);
 };
 

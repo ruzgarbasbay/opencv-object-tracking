@@ -91,12 +91,14 @@ void MainWindow::calculatePerformanceMetrics(quint64 startTime,
     if (frameTime == 0) {
         displayPerformanceMetrics("FPS: >1000", "Frametime: <1ms");
     } else {
-        displayPerformanceMetrics("FPS: " + QString::number(1000.0 / frameTime, 'f', 2),
-                                  "Frametime: " + QString::number(frameTime) + "ms");
+        displayPerformanceMetrics(
+            "FPS: " + QString::number(1000.0 / frameTime, 'f', 2),
+            "Frametime: " + QString::number(frameTime) + "ms");
     }
 }
 
-void MainWindow::displayPerformanceMetrics(QString fpsLabelText, QString frametimeLabelText) {
+void MainWindow::displayPerformanceMetrics(QString fpsLabelText,
+                                           QString frametimeLabelText) {
     ui->label_fps->setText(fpsLabelText);
     ui->label_frametime->setText(frametimeLabelText);
 }
@@ -150,7 +152,7 @@ void MainWindow::initializeTracker(TrackingAlgorithm algorithm) {
 
     catch (cv::Exception e) {
         QMessageBox::warning(this, "Warning",
-                             "Tracker initialization failed. Please select ROI.");
+            "Tracker initialization failed. Please select ROI.");
         tracker.release();
         displayPerformanceMetrics("", "");
         selectedROI = cv::Rect();
