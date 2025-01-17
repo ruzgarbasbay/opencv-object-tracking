@@ -10,6 +10,9 @@ MainWindow::MainWindow(QWidget *parent)
     cameraTimer(new QTimer(this)) {
 
     ui->setupUi(this);
+    ui->radioButton_TLD->setHidden(true);
+    ui->radioButton_MIL->setHidden(true);
+    this->setFixedSize(QSize(854, 480));
 
     if (!cap.isOpened()) {
         QMessageBox::critical(this, "Error", "Failed to open the camera.");
@@ -28,12 +31,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->radioButton_MOSSE, &QRadioButton::clicked, [this](bool checked) {
         updateTrackingAlgorithm(TrackingAlgorithm::MOSSE, checked);
     });
-    connect(ui->radioButton_TLD, &QRadioButton::clicked, [this](bool checked) {
-        updateTrackingAlgorithm(TrackingAlgorithm::TLD, checked);
-    });
-    connect(ui->radioButton_MIL, &QRadioButton::clicked, [this](bool checked) {
-        updateTrackingAlgorithm(TrackingAlgorithm::MIL, checked);
-    });
+    // connect(ui->radioButton_TLD, &QRadioButton::clicked, [this](bool checked) {
+    //     updateTrackingAlgorithm(TrackingAlgorithm::TLD, checked);
+    // });
+    // connect(ui->radioButton_MIL, &QRadioButton::clicked, [this](bool checked) {
+    //     updateTrackingAlgorithm(TrackingAlgorithm::MIL, checked);
+    // });
 }
 
 MainWindow::~MainWindow() {
@@ -135,12 +138,12 @@ void MainWindow::initializeTracker(TrackingAlgorithm algorithm) {
     case TrackingAlgorithm::MOSSE:
         tracker = cv::legacy::upgradeTrackingAPI(cv::legacy::TrackerMOSSE::create());
         break;
-    case TrackingAlgorithm::TLD:
-        tracker = cv::legacy::upgradeTrackingAPI(cv::legacy::TrackerTLD::create());
-        break;
-    case TrackingAlgorithm::MIL:
-        tracker = cv::TrackerMIL::create();
-        break;
+    // case TrackingAlgorithm::TLD:
+    //     tracker = cv::legacy::upgradeTrackingAPI(cv::legacy::TrackerTLD::create());
+    //     break;
+    // case TrackingAlgorithm::MIL:
+    //     tracker = cv::TrackerMIL::create();
+    //     break;
     default:
         tracker = cv::TrackerKCF::create();
         break;

@@ -32,8 +32,8 @@ private:
         KCF,
         CSRT,
         MOSSE,
-        TLD,
-        MIL,
+        // TLD,
+        // MIL,
     };
 
     Ui::MainWindow *ui;
