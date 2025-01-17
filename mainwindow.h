@@ -36,14 +36,14 @@ private:
         // MIL,
     };
 
-    Ui::MainWindow *ui;
-    cv::VideoCapture cap;
-    QTimer *cameraTimer;
-    cv::Rect selectedROI;
-    cv::Mat trackedFrame;
-    cv::Mat currentFrame;
-    TrackingAlgorithm trackingAlgorithm = TrackingAlgorithm::DEFAULT;
-    cv::Ptr<cv::Tracker> tracker = nullptr;
+    Ui::MainWindow *m_ui;
+    cv::VideoCapture m_cap;
+    QTimer *m_cameraTimer;
+    cv::Rect m_selectedROI;
+    cv::Mat m_trackedFrame;
+    cv::Mat m_currentFrame;
+    TrackingAlgorithm m_trackingAlgorithm = TrackingAlgorithm::DEFAULT;
+    cv::Ptr<cv::Tracker> m_tracker = nullptr;
 
     void displayImage(const cv::Mat &image, QFrame *frame);
     void initializeTracker(TrackingAlgorithm algorithm);
